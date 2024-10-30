@@ -1,0 +1,60 @@
+﻿FUNCTION "fcRamp" : Void
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      enable : Bool;
+      cycleTime : Real;   // cycle time of OB1 in ms
+      startValue : Real;
+      endValue : Real;
+      rampTime : Real;
+   END_VAR
+
+   VAR_OUTPUT 
+      rampComplete : Bool;
+   END_VAR
+
+   VAR_IN_OUT 
+      outputValue : Real;
+   END_VAR
+
+   VAR_TEMP 
+      stepValue : Real;
+      stepDirection : Bool;
+      ramping : Bool;
+   END_VAR
+
+
+BEGIN
+	#ramping := (#outputValue <> #endValue);
+	#rampComplete := NOT #ramping;
+	
+	IF #enable AND NOT (#rampTime = 0) AND NOT #rampComplete THEN
+	    #stepDirection := (#startValue > #endValue);
+	    #stepValue := ABS(#endValue - #startValue) / (#rampTime * 1000);
+	    
+	    IF #stepDirection THEN
+	        IF #outputValue < #endValue OR #outputValue > #startValue THEN
+	            #outputValue := #startValue;
+	        END_IF;
+	    ELSE
+	        IF #outputValue > #endValue OR #outputValue < #startValue THEN
+	            #outputValue := #startValue;
+	        END_IF;
+	    END_IF;
+	    
+	    IF #stepDirection THEN
+	        #outputValue := #startValue - (#startValue - #outputValue) - (#stepValue * #cycleTime);
+	        IF #outputValue < #endValue THEN
+	            #outputValue := #endValue;
+	        END_IF;
+	    ELSE
+	        #outputValue := #startValue + (#outputValue - #startValue) + (#stepValue * #cycleTime);
+	        IF #outputValue > #endValue THEN
+	            #outputValue := #endValue;
+	        END_IF;
+	    END_IF;
+	END_IF;
+	
+	        
+END_FUNCTION
+

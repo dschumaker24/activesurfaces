@@ -1,0 +1,141 @@
+﻿FUNCTION_BLOCK "fbWriteData"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_IN_OUT 
+      servoData : "typeServoDataCmd";
+      servoDataStore : "typeServoDataCmd";
+      servoWriteDataBits : Array[0..15] of Bool;
+      servoWriteDataDints : Array[0..64] of DInt;
+   END_VAR
+
+
+BEGIN
+	IF #servoData.dataAddrBit <= 0 THEN
+	    #servoData.dataAddrBit := 1;
+	END_IF;
+	
+	//Disable Motors
+	IF #servoData.disableMotors <> #servoDataStore.disableMotors THEN
+	    #servoData.dataAddrBit := 1;
+	    "ServoTags".ServoWriteBitState := #servoData.disableMotors;
+	    #servoDataStore.disableMotors := #servoData.disableMotors;
+	    #servoData.cmdWriteBit := true;
+	    //Run
+	ELSIF #servoData.run <> #servoDataStore.run THEN
+	    #servoData.dataAddrBit := 2;
+	    "ServoTags".ServoWriteBitState := #servoData.run;
+	    #servoDataStore.run := #servoData.run;
+	    #servoData.cmdWriteBit := TRUE;
+	    //Stop
+	ELSIF #servoData.stop <> #servoDataStore.stop THEN
+	    #servoData.dataAddrBit := 3;
+	    "ServoTags".ServoWriteBitState := #servoData.stop;
+	    #servoDataStore.stop := #servoData.stop;
+	    #servoData.cmdWriteBit := TRUE;
+	    //Jog Y Axis
+	ELSIF #servoData.jog_Y_Axis <> #servoDataStore.jog_Y_Axis THEN
+	    #servoData.dataAddrBit := 4;
+	    "ServoTags".ServoWriteBitState := #servoData.jog_Y_Axis;
+	    #servoDataStore.jog_Y_Axis := #servoData.jog_Y_Axis;
+	    #servoData.cmdWriteBit := TRUE;
+	    //Set Soft Speed
+	ELSIF #servoData.softSpeedSet <> #servoDataStore.softSpeedSet THEN
+	    #servoData.dataAddrBit := 5;
+	    "ServoTags".ServoWriteBitState := #servoData.softSpeedSet;
+	    #servoDataStore.softSpeedSet := #servoData.softSpeedSet;
+	    #servoData.cmdWriteBit := TRUE;
+	    //Set Soft Tension
+	ELSIF #servoData.softTensionSet <> #servoDataStore.softTensionSet THEN
+	    #servoData.dataAddrBit := 6;
+	    "ServoTags".ServoWriteBitState := #servoData.softTensionSet;
+	    #servoDataStore.softTensionSet := #servoData.softTensionSet;
+	    #servoData.cmdWriteBit := TRUE;
+	    //Set Tension Mode
+	ELSIF #servoData.takeupTensionMode <> #servoDataStore.takeupTensionMode THEN
+	    #servoData.dataAddrBit := 7;
+	    "ServoTags".ServoWriteBitState := #servoData.takeupTensionMode;
+	    #servoDataStore.takeupTensionMode := #servoData.takeupTensionMode;
+	    #servoData.cmdWriteBit := TRUE;
+	    //Set Position Mode
+	ELSIF #servoData.positionMode <> #servoDataStore.positionMode THEN
+	    #servoData.dataAddrBit := 8;
+	    "ServoTags".ServoWriteBitState := #servoData.positionMode;
+	    #servoDataStore.positionMode := #servoData.positionMode;
+	    #servoData.cmdWriteBit := TRUE;
+	    //Jog X Axis
+	ELSIF #servoData.jog_X_Axis <> #servoDataStore.jog_X_Axis THEN
+	    #servoData.dataAddrBit := 9;
+	    "ServoTags".ServoWriteBitState := #servoData.jog_X_Axis;
+	    #servoDataStore.jog_X_Axis := #servoData.jog_X_Axis;
+	    #servoData.cmdWriteBit := TRUE;
+	    //Enable Run Mode
+	ELSIF #servoData.enableRunMode <> #servoDataStore.enableRunMode THEN
+	    #servoData.dataAddrBit := 10;
+	    "ServoTags".ServoWriteBitState := #servoData.enableRunMode;
+	    #servoDataStore.enableRunMode := #servoData.enableRunMode;
+	    #servoData.cmdWriteBit := TRUE;
+	END_IF;
+	
+	//Accel-Decel
+	IF #servoData.accel <> #servoDataStore.accel THEN
+	    #servoData.dataAddrRegister := 40001;
+	    #servoWriteDataDints[0] := REAL_TO_DINT(#servoData.accel * 1000.0);
+	    #servoDataStore.accel := #servoData.accel;
+	    #servoData.cmdWriteRegister := TRUE;
+	    //Web Speed    
+	ELSIF #servoData.webSpeed <> #servoDataStore.webSpeed THEN
+	    #servoData.dataAddrRegister := 40003;
+	    #servoWriteDataDints[1] := REAL_TO_DINT(#servoData.webSpeed * 1000.0);
+	    #servoDataStore.webSpeed := #servoData.webSpeed;
+	    #servoData.cmdWriteRegister := TRUE;
+	    //Tension Setpoint
+	ELSIF #servoData.tensionSP <> #servoDataStore.tensionSP THEN
+	    #servoData.dataAddrRegister := 40005;
+	    #servoWriteDataDints[2] := REAL_TO_DINT(#servoData.tensionSP * 1000.0);
+	    #servoDataStore.tensionSP := #servoData.tensionSP;
+	    #servoData.cmdWriteRegister := TRUE;
+	    //Torque Setpoint    
+	ELSIF #servoData.torqueSP <> #servoDataStore.torqueSP THEN
+	    #servoData.dataAddrRegister := 40007;
+	    #servoWriteDataDints[3] := REAL_TO_DINT(#servoData.torqueSP * 1000.0);
+	    #servoDataStore.torqueSP := #servoData.torqueSP;
+	    #servoData.cmdWriteRegister := TRUE;
+	    //Distance
+	ELSIF #servoData.distance <> #servoDataStore.distance THEN
+	    #servoData.dataAddrRegister := 40009;
+	    #servoWriteDataDints[4] := REAL_TO_DINT(#servoData.distance * 1000.0);
+	    #servoDataStore.distance := #servoData.distance;
+	    #servoData.cmdWriteRegister := TRUE;
+	    //Jog Speed
+	ELSIF #servoData.jogSpeed <> #servoDataStore.jogSpeed THEN
+	    #servoData.dataAddrRegister := 40011;
+	    #servoWriteDataDints[5] := REAL_TO_DINT(#servoData.jogSpeed * 1000.0);
+	    #servoDataStore.jogSpeed := #servoData.jogSpeed;
+	    #servoData.cmdWriteRegister := TRUE;
+	    //Max Web Speed
+	ELSIF #servoData.maxWebSpeed <> #servoDataStore.maxWebSpeed THEN
+	    #servoData.dataAddrRegister := 40013;
+	    #servoWriteDataDints[6] := REAL_TO_DINT(#servoData.maxWebSpeed * 1000.0);
+	    #servoDataStore.maxWebSpeed := #servoData.maxWebSpeed;
+	    #servoData.cmdWriteRegister := TRUE;
+	    //Max Tension
+	ELSIF #servoData.maxTension <> #servoDataStore.maxTension THEN
+	    #servoData.dataAddrRegister := 40015;
+	    #servoWriteDataDints[7] := REAL_TO_DINT(#servoData.maxTension * 1000.0);
+	    #servoDataStore.maxTension := #servoData.maxTension;
+	    #servoData.cmdWriteRegister := TRUE;
+	    //Max Torque
+	ELSIF #servoData.maxTorque <> #servoDataStore.maxTorque THEN
+	    #servoData.dataAddrRegister := 40017;
+	    #servoWriteDataDints[8] := REAL_TO_DINT(#servoData.maxTorque * 1000.0);
+	    #servoDataStore.maxTorque := #servoData.maxTorque;
+	    #servoData.cmdWriteRegister := TRUE;
+	    //Jog Accel
+	ELSIF #servoData.jogAccel <> #servoDataStore.jogAccel THEN
+	    #servoData.dataAddrRegister := 40018;
+	    #servoWriteDataDints[9] := REAL_TO_DINT(#servoData.jogAccel * 1000.0);
+	    #servoDataStore.jogAccel := #servoData.jogAccel;
+	    #servoData.cmdWriteRegister := TRUE;
+	END_IF;
+END_FUNCTION_BLOCK
+

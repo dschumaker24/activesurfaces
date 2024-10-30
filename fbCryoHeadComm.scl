@@ -1,0 +1,155 @@
+﻿FUNCTION_BLOCK "fbCryoHeadComm"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      pumpStart : Array[0..14] of Byte;
+      pumpStop : Array[0..14] of Byte;
+      readTemp : Array[0..14] of Byte;
+      hw_port : HW_SUBMODULE;
+      interlock : Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      temperatureReal : Real;
+      temperatureString : String;
+   END_VAR
+
+   VAR_IN_OUT 
+      cmdStart : Bool;
+      cmdStop : Bool;
+      cmdRegen : Bool;
+      cmdRegenAbort : Bool;
+   END_VAR
+
+   VAR 
+      send {InstructionName := 'Send_P2P'; LibVersion := '4.0'; S7_SetPoint := 'False'} : Send_P2P;
+      receive {InstructionName := 'Receive_P2P'; LibVersion := '4.1'} : Receive_P2P;
+      bFirstRun { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      iCommand { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int := 0;
+      sendLength { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt := 14;
+      recvLength { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt := 14;
+      bRTS : Bool := false;
+      bSending : Bool := false;
+      bReceiving : Bool := false;
+      idlePoll : Int := 1;
+      tonDelay {InstructionName := 'TON_TIME'; LibVersion := '1.0'; S7_SetPoint := 'False'} : TON_TIME;
+   END_VAR
+
+   VAR_TEMP 
+      sendCommand : Array[0..14] of Byte;
+      recvStatus : Array[0..14] of Byte;
+      tempString : String;
+   END_VAR
+
+   VAR CONSTANT 
+      cn_Idle : Int := 0;
+      cn_Start : Int := 1;
+      cn_Stop : Int := 2;
+      cn_Regen : Int := 3;
+      cn_RegenAbort : Int := 4;
+      kelvin : String := ' °K';
+   END_VAR
+
+
+BEGIN
+	IF #bFirstRun THEN
+	    #send.REQ := FALSE;
+	    #bSending := FALSE;
+	    #bRTS := FALSE;
+	    #bReceiving := FALSE;
+	    #tonDelay(IN := TRUE,
+	              PT := t#250ms);
+	    #bFirstRun := FALSE;
+	ELSE
+	    IF NOT #interlock THEN
+	        #cmdStart := FALSE;
+	        #cmdStop := FALSE;
+	        #cmdRegen := FALSE;
+	        #cmdRegenAbort := FALSE;
+	    END_IF;
+	    
+	    IF #iCommand = #cn_Idle THEN
+	        IF #cmdStart THEN
+	            #iCommand := #cn_Start;
+	            #cmdStart := FALSE;
+	        ELSIF #cmdStop THEN
+	            #iCommand := #cn_Stop;
+	            #cmdStop := FALSE;
+	        ELSIF #cmdRegen THEN
+	            #iCommand := #cn_Regen;
+	            #cmdRegen := FALSE;
+	        ELSIF #cmdRegenAbort THEN
+	            #iCommand := #cn_RegenAbort;
+	            #cmdRegenAbort := FALSE;
+	        END_IF;
+	    ELSE
+	        #cmdStart := FALSE;
+	        #cmdStart := FALSE;
+	    END_IF;
+	    
+	    CASE #iCommand OF
+	        #cn_Start:
+	            #sendCommand := #pumpStart;
+	            #bRTS := TRUE;
+	            
+	        #cn_Stop:
+	            #sendCommand := #pumpStop;
+	            #bRTS := TRUE;
+	            
+	        #cn_Idle:
+	            IF NOT #bSending AND NOT #bReceiving AND #tonDelay.Q THEN
+	                #sendCommand := #readTemp;
+	                #bRTS := TRUE;
+	            END_IF;
+	    END_CASE;
+	END_IF;
+	
+	IF #tonDelay.Q THEN
+	    #tonDelay(IN := false,
+	              PT := t#250ms);
+	    #sendLength := 14;
+	    #bSending := TRUE;
+	    
+	    #send("PORT" := #hw_port,
+	          BUFFER := #sendCommand,
+	          LENGTH := #sendLength,
+	          REQ := TRUE);
+	    
+	    #send.REQ := FALSE;
+	    #iCommand := 0;
+	    #tonDelay(IN := TRUE,
+	              PT := t#250ms);
+	END_IF;
+	
+	IF #bSending AND #send.DONE THEN
+	    #send.REQ := FALSE;
+	    #bRTS := FALSE;
+	    #bSending := FALSE;
+	ELSIF #bSending AND #send.ERROR THEN
+	    #send.REQ := FALSE;
+	    #bRTS := FALSE;
+	    #bSending := FALSE;
+	END_IF;
+	
+	#receive("PORT" := #hw_port,
+	         BUFFER := #recvStatus);
+	
+	IF #receive.NDR THEN
+	    #bReceiving := TRUE;
+	    Chars_TO_Strg(Chars:=#recvStatus,
+	                  pChars:=4,
+	                  Cnt:=5,
+	                  Strg=>#tempString);
+	    
+	    #temperatureString := CONCAT(IN1 := #tempString, IN2 := #kelvin);
+	    
+	    STRG_VAL(IN:=#tempString,
+	             FORMAT:=16#0000,
+	             P:=1,
+	             OUT=>#temperatureReal);
+	END_IF;
+	
+	
+	
+END_FUNCTION_BLOCK
+
